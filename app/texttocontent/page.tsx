@@ -3,49 +3,45 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export default function TextToStructuredContentConverter() {
   const [input, setInput] = useState("")
-  const [heading, setHeading] = useState("")
-  const [paragraph, setParagraph] = useState("")
-  const [includeHeading, setIncludeHeading] = useState(false)
-  const [includeParagraph, setIncludeParagraph] = useState(false)
-  const [isOrderedList, setIsOrderedList] = useState(true)
   const [output, setOutput] = useState("")
+  const [isOrderedList, setIsOrderedList] = useState(false)
 
   const convertToStructuredContent = () => {
+    const lines = input.split("\n").filter((line) => line.trim() !== "")
     const content = []
 
-    if (includeHeading && heading) {
+    if (lines.length > 0) {
+      // Assume the first line is the heading
       content.push(`{
-  type: "heading",
-  text: "${heading}",
+  type: 'heading',
+  text: '${lines[0].replace(/'/g, "\\'")}',
 }`)
-    }
 
-    if (includeParagraph && paragraph) {
-      content.push(`{
-  type: "paragraph",
-  text: "${paragraph.replace(/"/g, '\\"')}",
+      if (lines.length > 1) {
+        // Assume the second line is the paragraph
+        content.push(`{
+  type: 'paragraph',
+  text: '${lines[1].replace(/'/g, "\\'")}',
 }`)
-    }
 
-    const items = input
-      .split("\n")
-      .filter((line) => line.trim() !== "")
-      .map((line) => `  "${line.trim()}"`)
-
-    content.push(`{
-  type: "list",
-  style: "${isOrderedList ? "ordered" : "unordered"}",
+        // Assume the rest are list items
+        if (lines.length > 2) {
+          const items = lines.slice(2).map((line) => `  '${line.trim().replace(/'/g, "\\'")}'`)
+          content.push(`{
+  type: 'list',${isOrderedList ? "\n  style: 'ordered'," : ""}
   items: [
 ${items.join(",\n")}
   ],
 }`)
+        }
+      }
+    }
 
     setOutput(content.join(",\n"))
   }
@@ -68,33 +64,16 @@ ${items.join(",\n")}
           <CardTitle>Text to Structured Content Converter</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="heading-checkbox"
-              checked={includeHeading}
-              onCheckedChange={(checked) => setIncludeHeading(checked as boolean)}
-            />
-            <Label htmlFor="heading-checkbox">Include Heading</Label>
-          </div>
-          {includeHeading && (
-            <Input value={heading} onChange={(e) => setHeading(e.target.value)} placeholder="Enter heading..." />
-          )}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="paragraph-checkbox"
-              checked={includeParagraph}
-              onCheckedChange={(checked) => setIncludeParagraph(checked as boolean)}
-            />
-            <Label htmlFor="paragraph-checkbox">Include Paragraph</Label>
-          </div>
-          {includeParagraph && (
+          <div>
+            <Label htmlFor="input">Input Text</Label>
             <Textarea
-              value={paragraph}
-              onChange={(e) => setParagraph(e.target.value)}
-              placeholder="Enter paragraph..."
-              className="min-h-[100px]"
+              id="input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Enter your text here..."
+              className="min-h-[200px]"
             />
-          )}
+          </div>
           <div className="flex items-center space-x-2">
             <Checkbox
               id="ordered-list-checkbox"
@@ -103,29 +82,21 @@ ${items.join(",\n")}
             />
             <Label htmlFor="ordered-list-checkbox">Use Ordered List</Label>
           </div>
-          <div>
-            <Label htmlFor="input" className="block text-sm font-medium mb-2">
-              List Items (one per line)
-            </Label>
-            <Textarea
-              id="input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Enter list items, one per line..."
-              className="min-h-[200px]"
-            />
-          </div>
           <Button onClick={convertToStructuredContent}>Convert to Structured Content</Button>
           {output && (
             <div>
-              <Label htmlFor="output" className="block text-sm font-medium mb-2">
-                Output Structured Content
-              </Label>
+              <Label htmlFor="output">Output Structured Content</Label>
               <Textarea id="output" value={output} readOnly className="min-h-[200px] font-mono" />
             </div>
           )}
         </CardContent>
-        <CardFooter>{output && <Button onClick={copyToClipboard}>Copy to Clipboard</Button>}</CardFooter>
+        <CardFooter>
+          {output && (
+            <Button onClick={copyToClipboard} aria-label="Copy output to clipboard">
+              Copy to Clipboard
+            </Button>
+          )}
+        </CardFooter>
       </Card>
     </div>
   )
